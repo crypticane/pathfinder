@@ -1,12 +1,9 @@
 import math
 import sys
-import time
 
 import pygame
 from pygame.locals import *
 
-
-# Defines colours
 DGREY = (100, 100, 100)
 GREY = (125, 125, 125)
 WHITE = (255, 255, 255)
@@ -20,57 +17,24 @@ FPS = 30
 
 # sizes of window in pixels
 WINDOWWIDTH = 500
-WINDOWHEIGHT = 500
+WINDOWHEIGHT = WINDOWWIDTH
 
 BOARDWIDTH = 10  # number of columns of icons
-BOARDHEIGHT = 10  # number of rows of icons
+BOARDHEIGHT = BOARDWIDTH  # number of rows of icons
 
-BOXSIZE = 30  # size of box height & width in pixels
-GAPSIZE = 20  # size of gap between boxes in pixels
+BOXSIZE = (WINDOWWIDTH/BOARDWIDTH)-WINDOWWIDTH/500  # size of box height & width in pixels
+GAPSIZE = WINDOWWIDTH/500  # size of gap between boxes in pixels
 
 # outer border width
-XMARGIN = int((WINDOWWIDTH - (BOARDWIDTH * (BOXSIZE + GAPSIZE))) / 2)+10
-YMARGIN = int((WINDOWHEIGHT - (BOARDHEIGHT * (BOXSIZE + GAPSIZE))) / 2)+10
+XMARGIN = int((WINDOWWIDTH - (BOARDWIDTH * (BOXSIZE + GAPSIZE))) / 2)
+YMARGIN = int((WINDOWHEIGHT - (BOARDHEIGHT * (BOXSIZE + GAPSIZE))) / 2)
 
 SCREEN = pygame.display.set_mode((WINDOWWIDTH, WINDOWHEIGHT))  # surface that pygame will draw on
 
 
 def main():
-    maze = [[0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 1, 1, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
-            [0, 0, 0, 0, 1, 1, 1, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-            [1, 0, 1, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], ]  # 0s are passable, 1s are 'walls'
-
-    running = False  # whether A* is running, or whether the program is in setup
-    # initialising start and end nodes
-    start = None
-    end = None
     pygame.init()
-    mouseClicked = 0  # the first time the mouse is clicked, it's the start, the second is the end node
-    drawBoard(maze, None, None, None, None, running, False)  # draws the basic board
-    while mouseClicked < 2:
-        # Setup loop. Waits until user has picked start and end nodes
-        for event in pygame.event.get():  # event handling loop
-            if event.type == QUIT or (event.type == KEYUP and event.key == K_ESCAPE):
-                pygame.quit()
-                sys.exit()
-            elif event.type == MOUSEBUTTONUP:
-                mousex, mousey = event.pos
-                mouseClicked += 1
-        if mouseClicked == 1:
-            start = getBoxAtPixel(mousex, mousey)
-        elif mouseClicked == 2:
-            end = getBoxAtPixel(mousex, mousey)
-        drawBoard(maze, None, None, start, end, running, False)  # draws the board with the known start/end node
-        pygame.display.update()
-
-    astar(maze, start, end)  # calls A* method
+    setup()
 
 
 class Node():
@@ -86,6 +50,48 @@ class Node():
 
     def __eq__(self, other):
         return self.position == other.position
+
+
+def setup():
+    maze = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], ]  # 0s are passable, 1s are 'walls'
+
+    running = False  # whether A* is running, or whether the program is in setup
+    # initialising start and end nodes
+    start = None
+    end = None
+    setupComplete = False  # the first time the mouse is clicked, it's the start, the second is the end node
+    drawBoard(maze, None, None, None, None, running, False)  # draws the basic board
+    while not setupComplete:
+        # Setup loop. Waits until user has picked start and end nodes
+        for event in pygame.event.get():
+            if event.type == QUIT or (event.type == KEYUP and event.key == K_ESCAPE):
+                pygame.quit()
+                sys.exit()
+            elif event.type == MOUSEBUTTONUP:
+                mousex, mousey = event.pos
+                if event.button == 1:
+                    start = getBoxAtPixel(mousex, mousey)
+                elif event.button == BUTTON_RIGHT:
+                    end = getBoxAtPixel(mousex, mousey)
+                elif event.button == BUTTON_MIDDLE:
+                    x, y = getBoxAtPixel(mousex, mousey)
+                    maze[y][x] = 1
+            if event.type == KEYUP and event.key == K_SPACE:
+                setupComplete = True
+
+        drawBoard(maze, None, None, start, end, running, False)  # draws the board with the known start/end node
+        pygame.display.update()
+
+    astar(maze, start, end)  # calls A* method
 
 
 def astar(maze, start, end):
@@ -136,10 +142,11 @@ def astar(maze, start, end):
             try:
                 node_position = (
                     current_node.position[0] + new_position[0], current_node.position[1] + new_position[1])
-            except:
+            except (IndexError, TypeError):
                 print('I think you clicked a gap not a box')
                 pygame.quit()
                 sys.exit()
+
             # Make sure within maze
             if node_position[0] > (len(maze) - 1) or node_position[0] < 0 or node_position[1] > (len(maze[len(maze)-1]) - 1) or node_position[1] < 0:
                 continue
@@ -163,8 +170,8 @@ def astar(maze, start, end):
             # Creates the f, g, and h values
             child.g = current_node.g + 1
             try:
-                child.h = (((child.position[0] - end_node.position[0]) ** 2) + ((child.position[1] - end_node.position[1]) ** 2))
-            except:
+                child.h = math.sqrt(((child.position[0] - end_node.position[0]) ** 2) + ((child.position[1] - end_node.position[1]) ** 2))
+            except (IndexError, TypeError):
                 print('I think you clicked a gap not a box')
                 pygame.quit()
                 sys.exit()
@@ -179,7 +186,12 @@ def astar(maze, start, end):
             if append:
                 open_list.append(child)
         drawBoard(maze, open_list, closed_list, start, end, running, finish, path)
-        gameLoop(open_list[-1], finish)
+        try:
+            gameLoop(open_list[-1], finish)
+        except IndexError:
+            print('No valid path')
+            pygame.quit()
+            sys.exit()
 
 
 def gameLoop(box, finish):
@@ -190,12 +202,15 @@ def gameLoop(box, finish):
             pygame.quit()
             sys.exit()
     if finish:
-        while True:
+        while finish:
             for event in pygame.event.get():
-                if event.type == QUIT or (event.type == KEYUP and event.key == K_ESCAPE):
+                if event.type == QUIT:
                     pygame.quit()
                     sys.exit()
+                if (event.type == KEYUP and event.key == K_SPACE) or (event.type == KEYUP and event.key == K_ESCAPE):
+                    finish = False
             pygame.display.update()
+        setup()
     pygame.display.update()
     FPSCLOCK.tick(FPS)
 
@@ -210,6 +225,9 @@ def drawBoard(maze, open_list, closed_list, start, end, running, finish, path=No
             if start is not None and indexX == start[0] and indexY == start[1]:
                 # Fills in starting box
                 pygame.draw.rect(SCREEN, GREEN, (left, top, BOXSIZE, BOXSIZE))
+            if end is not None and indexX == end[0] and indexY == end[1]:
+                # Fills in ending box
+                pygame.draw.rect(SCREEN, RED, (left, top, BOXSIZE, BOXSIZE))
             if running:
                 for box in open_list:
                     # Fills in open list
@@ -219,10 +237,7 @@ def drawBoard(maze, open_list, closed_list, start, end, running, finish, path=No
                     # Fills in closed list
                     if box.position[0] == indexX and box.position[1] == indexY:
                         pygame.draw.rect(SCREEN, BLUE, (left, top, BOXSIZE, BOXSIZE))
-                if indexX == end[0] and indexY == end[1]:
-                    # Fills in finishing square
-                    pygame.draw.rect(SCREEN, RED, (left, top, BOXSIZE, BOXSIZE))
-                elif finish:
+                if finish:
                     # Fills in the path that A* found
                     for box in path:
                         if box[0] == indexX and box[1] == indexY:
@@ -233,7 +248,7 @@ def drawBoard(maze, open_list, closed_list, start, end, running, finish, path=No
 
 
 def getBoxAtPixel(x, y):
-    """converts pixel coordinates to board coordinates"""
+    """Converts pixel coordinates to board coordinates"""
     for boxx in range(BOARDWIDTH):
         for boxy in range(BOARDHEIGHT):
             left, top = leftTopCoordsOfBox(boxx, boxy)
@@ -244,7 +259,7 @@ def getBoxAtPixel(x, y):
 
 
 def leftTopCoordsOfBox(boxx, boxy):
-    """Convert board coordinates to pixel coordinates"""
+    """Converts board coordinates to pixel coordinates"""
     left = boxx * (BOXSIZE + GAPSIZE) + XMARGIN
     top = boxy * (BOXSIZE + GAPSIZE) + YMARGIN
     return (left, top)
