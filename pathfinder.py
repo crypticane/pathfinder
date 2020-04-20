@@ -19,15 +19,14 @@ FPS = 30
 WINDOWWIDTH = 500
 WINDOWHEIGHT = WINDOWWIDTH
 
-BOARDWIDTH = 10  # number of columns of icons
-BOARDHEIGHT = BOARDWIDTH  # number of rows of icons
+NUMOFBOXES = 20
 
-BOXSIZE = (WINDOWWIDTH/BOARDWIDTH)-WINDOWWIDTH/500  # size of box height & width in pixels
+BOXSIZE = (WINDOWWIDTH/NUMOFBOXES)-WINDOWWIDTH/500  # size of box height & width in pixels
 GAPSIZE = WINDOWWIDTH/500  # size of gap between boxes in pixels
 
 # outer border width
-XMARGIN = int((WINDOWWIDTH - (BOARDWIDTH * (BOXSIZE + GAPSIZE))) / 2)
-YMARGIN = int((WINDOWHEIGHT - (BOARDHEIGHT * (BOXSIZE + GAPSIZE))) / 2)
+XMARGIN = int((WINDOWWIDTH - (NUMOFBOXES * (BOXSIZE + GAPSIZE))) / 2)
+YMARGIN = int((WINDOWHEIGHT - (NUMOFBOXES * (BOXSIZE + GAPSIZE))) / 2)
 
 SCREEN = pygame.display.set_mode((WINDOWWIDTH, WINDOWHEIGHT))  # surface that pygame will draw on
 
@@ -53,17 +52,12 @@ class Node():
 
 
 def setup():
-    maze = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], ]  # 0s are passable, 1s are 'walls'
-
+    mazeX = []
+    maze = []
+    for x in range(NUMOFBOXES):
+        mazeX.append(0)
+    for y in range(NUMOFBOXES):
+        maze.append(mazeX.copy())
     running = False  # whether A* is running, or whether the program is in setup
     # initialising start and end nodes
     start = None
@@ -76,15 +70,17 @@ def setup():
             if event.type == QUIT or (event.type == KEYUP and event.key == K_ESCAPE):
                 pygame.quit()
                 sys.exit()
-            elif event.type == MOUSEBUTTONUP:
-                mousex, mousey = event.pos
-                if event.button == 1:
-                    start = getBoxAtPixel(mousex, mousey)
-                elif event.button == BUTTON_RIGHT:
-                    end = getBoxAtPixel(mousex, mousey)
-                elif event.button == BUTTON_MIDDLE:
-                    x, y = getBoxAtPixel(mousex, mousey)
+            mousex, mousey = pygame.mouse.get_pos()
+            if pygame.mouse.get_pressed()[0]:
+                start = getBoxAtPixel(mousex, mousey)
+            elif pygame.mouse.get_pressed()[2]:
+                end = getBoxAtPixel(mousex, mousey)
+            elif pygame.mouse.get_pressed()[1]:
+                x, y = getBoxAtPixel(mousex, mousey)
+                try:
                     maze[y][x] = 1
+                except:
+                    continue
             if event.type == KEYUP and event.key == K_SPACE:
                 setupComplete = True
 
@@ -177,14 +173,15 @@ def astar(maze, start, end):
                 sys.exit()
             child.f = child.g + child.h
 
-            # If child is on open list, don't append it
+            # If child is on open list and it's further from the start, don't append it
             for open_node in open_list:
-                if child == open_node and child.g > open_node.g:
+                if child == open_node:
                     append = False
 
             # Add the child to the open list
             if append:
                 open_list.append(child)
+
         drawBoard(maze, open_list, closed_list, start, end, running, finish, path)
         try:
             gameLoop(open_list[-1], finish)
@@ -249,8 +246,8 @@ def drawBoard(maze, open_list, closed_list, start, end, running, finish, path=No
 
 def getBoxAtPixel(x, y):
     """Converts pixel coordinates to board coordinates"""
-    for boxx in range(BOARDWIDTH):
-        for boxy in range(BOARDHEIGHT):
+    for boxx in range(NUMOFBOXES):
+        for boxy in range(NUMOFBOXES):
             left, top = leftTopCoordsOfBox(boxx, boxy)
             boxRect = pygame.Rect(left, top, BOXSIZE, BOXSIZE)
             if boxRect.collidepoint(x, y):
